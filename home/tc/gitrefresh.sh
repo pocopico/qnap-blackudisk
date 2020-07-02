@@ -46,8 +46,8 @@ refreshscripts()
  echo "Copying contents ..."
  cp $WORKING_DIR/qnap-blackudisk/home/tc/* /home/tc/
  cp $WORKING_DIR/qnap-blackudisk/tmp/tce/*  /tmp/tce/
- chown -R 1001:50 $WORKING_DIR/$TINYCOREFOLDER/home/tc
- chown 1001:50 $WORKING_DIR/$TINYCOREFOLDER/tmp ; chown 3:1001 home
+ chown -R 1001:50 $WORKING_DIR
+ chown 1001:50 /tmp/tce ; chown 3:1001 home
  
  echo "Removing temp folder"
  rm -rf $WORKING_DIR/qnap-blackudisk
