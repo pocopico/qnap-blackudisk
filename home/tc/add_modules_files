@@ -78,9 +78,18 @@ echo "Append modules.dep"
 cat $ADDITIONALDIR/modules/modules.dep >> $WORKING_DIR/initrd/lib/modules/misc/modules.dep 
 echo "Removing binary modules.bin"
 rm -f $WORKING_DIR/initrd/lib/modules/misc/modules.*.bin 
-echo "Inserting module load command in init_hardware.sh"
-cat $ADDITIONALDIR/filemods/add_init_hardware 
-sed "/md4.ko/ r $ADDITIONALDIR/filemods/add_init_hardware"  $WORKING_DIR/initrd/etc/init.d/init_hardware.sh > $WORKING_DIR/init_hardware.sh ; chmod 755 $WORKING_DIR/init_hardware.sh; mv $WORKING_DIR/init_hardware.sh $WORKING_DIR/initrd/etc/init.d/init_hardware.sh
+
+        if [ `grep -i pocopico initrd/etc/init.d/init_hardware.sh |wc -l` -eq 0 ] ; then
+
+        echo "Inserting module load command in init_hardware.sh"
+        cat $ADDITIONALDIR/filemods/add_init_hardware
+        sed "/md4.ko/ r $ADDITIONALDIR/filemods/add_init_hardware"  $WORKING_DIR/initrd/etc/init.d/init_hardware.sh > $WORKING_DIR/init_hardware.sh ; chmod 755 $WORKING_DIR/init_hardware.sh; mv $WORKING_DIR/init_hardware.sh $WORKING_DIR/initrd/etc/init.d/init_hardware.sh
+        else
+        echo "Module load commands already in init_hardware script "
+        fi
+
+
+
 echo "Adding lsscsi and rescan-scsi-bus into initrd sbin"
 cp  $ADDITIONALDIR/sbin/lsscsi $WORKING_DIR/initrd/sbin/ 
 cp  $ADDITIONALDIR/sbin/rescan-scsi-bus $WORKING_DIR/initrd/sbin/ 
