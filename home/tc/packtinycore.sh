@@ -41,7 +41,7 @@ rm -rf $WORKING_DIR/initrd
 echo "Copying contents for temp FOLDER"
 cp -rp /home/tc/* $WORKING_DIR/$TINYCOREFOLDER/home/tc
 cp -rp /tmp/tce $WORKING_DIR/$TINYCOREFOLDER/tmp/
-rm -rf $WORKING_DIR/$TINYCOREFOLDER/home/tc/TINYFOLDER
+rm -rf $WORKING_DIR/$TINYCOREFOLDER/home/tc/$TINYCOREFOLDER
 
 
 echo "Creating tinycore image with the contents of folder $TINYCOREFOLDER "
