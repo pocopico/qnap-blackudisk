@@ -49,8 +49,10 @@ refreshscripts()
  sudo chown -R 1001:50 $WORKING_DIR
  sudo chown 1001:50 /tmp/tce ; chown 3:1001 /home
  
- echo "Removing temp folder"
- rm -rf $WORKING_DIR/qnap-blackudisk
+ echo "Removing temp folder and files0"
+ sudo rm -rf $WORKING_DIR/qnap-blackudisk
+ sudo rm -rf /tmp/tce/optional/git.tcz* /tmp/tce/optional/ca-* /tmp/tce/optional/curl.tcz* /tmp/tce/optional/expat2.tcz
+
  
  echo "DONE !!! "
 
