@@ -70,6 +70,7 @@ fi
 
 echo "Copying file to your boot drive"
 
+sudo rm -rf /mnt/${BOOT_DRIVES}1/boot/tinycore.gz
 cp $WORKING_DIR/tinycore.gz /mnt/${BOOT_DRIVES}1/boot/tinycore.gz
 ls -l /mnt/${BOOT_DRIVES}1/boot/tinycore.gz
 
