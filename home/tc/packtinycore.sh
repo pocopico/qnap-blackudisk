@@ -70,15 +70,28 @@ fi
 
 echo "Copying file to your boot drive"
 
-sudo rm -rf /mnt/${BOOT_DRIVES}1/boot/tinycore.gz
-cp $WORKING_DIR/tinycore.gz /mnt/${BOOT_DRIVES}1/boot/tinycore.gz
-ls -l /mnt/${BOOT_DRIVES}1/boot/tinycore.gz
 
+cp $WORKING_DIR/tinycore.gz /mnt/${BOOT_DRIVES}1/tinycore.gz
 
+if [ -f /mnt/${BOOT_DRIVES}1/tinycore.gz ] ; then 
+
+echo "Check file : "
+
+ls -l /mnt/${BOOT_DRIVES}1/tinycore.gz
 echo "Removing temp folders and files"
-
 rm -rf $WORKING_DIR/$TINYCOREFOLDER
 rm -rf $WORKING_DIR/tinycore.gz
+
+else 
+
+echo "----------============={ !!!! ATTENTION !!!! }============-------------"
+echo "TINYCORE IS NOT THERE ! You might not be able to reboot into tinycore "
+echo "----------============={ !!!! ATTENTION !!!! }============-------------"
+rm -rf $WORKING_DIR/$TINYCOREFOLDER
+echo "I will leave tinycore.gz in place for you to manually copy"
+
+fi
+
 
 
 echo "Unmounting boot drive "
