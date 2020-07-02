@@ -1,0 +1,67 @@
+#!/bin/sh
+#该脚本出自nasyun.com那是云论坛Mojelly，便于黑Q玩家提取各机型RAM DISK中原始的patch补丁相关文件、
+#驱动文件、model配置等QTS系统文件，仅用于学习、了解Linux相关技术知识，禁止将本脚本或者黑Q用于任何商业用途！
+
+#This script by Mojelly to extract initrd from QNAP boot disk, for extracting patch, drivers, model...
+#This script is only used to learn and understand Linux related technical knowledge. 
+#It is forbidden to use it or HackQNAP for any commercial purpose!
+
+extract_initrd()
+{
+    if [ "$1" = "lzma" ]; then
+        mv ./initrd.boot ./initrd.boot.lzma
+        unlzma ./initrd.boot.lzma
+    else
+        mv ./initrd.boot ./initrd.boot.gz
+        gzip -d ./initrd.boot.gz
+    fi
+    if [ $? != 0 ]; then
+        echo "Decompress the ram disk failed."
+        rm -f ./initrd.boot.*
+        return 1
+    fi
+    [ -d ./initrd ] || mkdir ./initrd
+    cd ./initrd
+    cpio -id < ../initrd.boot 1>/dev/null 2>&1
+    cd ..
+    rm -f ./initrd.boot
+}
+
+error_exit()
+{
+    echo $1
+    exit 1
+}
+
+WORKING_DIR=$(pwd)
+
+ls *.zip 1>/dev/null 2>&1 || error_exit "No zip file found!"
+for i in *.zip
+do
+	if [ ! -d ${i/.zip/}/initrd ]; then 
+		[ -d ${i/.zip/} ] || mkdir ./${i/.zip//}
+		[ ! -e ${i/.zip/}/${i/.zip/}.img ] && unzip $i -d ./${i/.zip//}
+		[ -e ${i/.zip/}/${i/.zip/}.img ] || ( echo "错误：没有找到img固件文件!" && echo "ERROR: No ${i/.zip/}.img file found!" )
+		
+		cd ${i/.zip/}
+		[ -e decoded_firmware.tar.gz ] || ../pc1 d QNAPNASVERSION4 ./*.img ./decoded_firmware.tar.gz
+		if [ -e decoded_firmware.tar.gz ]; then	
+			rm -f ./${i/.zip/}.img
+			tar -xvf decoded_firmware.tar.gz initrd.boot
+			rm -f decoded_firmware.tar.gz
+			extract_initrd "lzma"
+			echo "信息: [${i/.zip/}]的initrd文件提取成功!" && echo "INFO: [${i/.zip/}] initrd extract successful."
+			echo
+		else
+			echo "错误: 无法解密${i/.zip/}固件!" && echo "ERROR: Unable to decoded QNAP firmware for ${i/.zip/}.img."
+			echo
+		fi
+		
+		cd $WORKING_DIR
+	else
+		echo "信息: ${i/.zip/} initrd目录已经存在!如需重新提取，请先删除已有的initrd目录!" && echo "INFO: [${i/.zip/}] initrd directory already exists， If you want to extract the initrd again, delete the existing initrd directory."
+		echo
+	fi
+done
+
+exit 0

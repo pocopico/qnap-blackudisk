@@ -1,0 +1,50 @@
+#!/bin/sh
+# This is developed by laojifuli to re-packing QNAP RAM Disk
+
+packing_initrd()
+{
+    rm -f ./initrd.boot
+    cd ./initrd
+    sudo find . | sudo cpio -o -H newc | gzip > ../initrd.boot
+}
+
+if [ ! -d ./initrd ]; then
+    echo "You did not do [create_qnap_boot], could not do re-packing the QNAP RAM disk."
+    exit 1
+fi
+
+BOOT_DISK=$(./hal_app2)
+if [ "x$BOOT_DISK" = "x" ]; then
+    echo "Could not found laojifuli's QNAP boot disk."
+    exit 1
+fi
+WORKING_DIR=$(pwd)
+
+# mount the QNAP master boot partion
+[ -d /mnt/${BOOT_DISK}2 ] || mkdir /mnt/${BOOT_DISK}2
+sudo mount -t ext2 /dev/${BOOT_DISK}2 /mnt/${BOOT_DISK}2 1>/dev/null 2>&1
+if [ $? != 0 ]; then
+    echo "Try to mount /dev/${BOOT_DISK}2 failed."
+    exit 1
+fi
+
+cd ${WORKING_DIR}
+# sudo ./hardware_check
+echo "Re-packing the QNAP RAM disk. Please wait a while."
+packing_initrd
+cd ${WORKING_DIR}
+
+if [ ! -f ./initrd.boot ]; then
+    echo "Re-packing the QNAP RAM disk failed."
+    sudo umount /dev/${BOOT_DISK}2 1>/dev/null 2>&1
+    exit 1
+fi
+
+cksum initrd.boot > initrd.boot.cksum
+sudo mv -f ./initrd.boot /mnt/${BOOT_DISK}2/boot/
+sudo mv -f ./initrd.boot.cksum /mnt/${BOOT_DISK}2/boot/
+sudo umount /dev/${BOOT_DISK}2 1>/dev/null 2>&1
+
+echo "Re-Create QNAP boot disk successful."
+echo "You need to restart system to install QNAP."
+echo

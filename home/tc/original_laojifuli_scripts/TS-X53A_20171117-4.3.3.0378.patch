@@ -1,0 +1,330 @@
+diff -Nauri a/chkcfgpart.sh b/chkcfgpart.sh
+--- a/chkcfgpart.sh	2018-01-14 10:41:00.380963000 -0800
++++ b/chkcfgpart.sh	2018-01-14 10:50:47.000000000 -0800
+@@ -3,8 +3,8 @@
+ BOOT_CONF=`/bin/cat /etc/default_config/BOOT.conf 2>/dev/null`
+ # check if the HAL subsystem exist
+ modelname="$(/sbin/getcfg "System" "MODEL" -f /etc/config/uLinux.conf)"
+-if [ -x /sbin/hal_app ]; then
+-    BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++if [ -x /sbin/hal_app1 ]; then
++    BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+ elif [ "x${BOOT_CONF}" = "xTS-NASARM" ]; then
+ 	BOOT_DEV="/dev/mtdblock"
+ else
+diff -Nauri a/functions b/functions
+--- a/functions	2018-01-14 10:41:00.380963000 -0800
++++ b/functions	2018-01-14 10:51:29.000000000 -0800
+@@ -23,9 +23,9 @@
+ {
+ 	local FLASH_TMP="/flashfs_tmp"
+ # check if the HAL subsystem exist
+-	if [ -x /sbin/hal_app ]; then
+-		local FLASH_RFS1=$(/sbin/hal_app --get_boot_pd_part port_id=0,obj_index=0)
+-		local FLASH_RFS2=$(/sbin/hal_app --get_boot_pd_part port_id=0,obj_index=1)
++	if [ -x /sbin/hal_app1 ]; then
++		local FLASH_RFS1=$(/sbin/hal_app1 --get_boot_pd_part port_id=0,obj_index=0)
++		local FLASH_RFS2=$(/sbin/hal_app1 --get_boot_pd_part port_id=0,obj_index=1)
+ 	else
+ 		local BOOT_DEV="/dev/sdx"
+ 	    local FLASH_RFS1=${BOOT_DEV}2
+diff -Nauri a/init_check.sh b/init_check.sh
+--- a/init_check.sh	2018-01-14 10:41:00.380963000 -0800
++++ b/init_check.sh	2018-01-14 10:55:46.000000000 -0800
+@@ -32,7 +32,7 @@
+ extract_qpkg_and_install_avahi()
+ {
+ 	if [ "x$(/sbin/hal_app --check_tbt_support)" = "xyes" ];then
+-		FLASH_RFS2=$(/sbin/hal_app --get_boot_pd_part port_id=0,obj_index=0)
++		FLASH_RFS2=$(/sbin/hal_app1 --get_boot_pd_part port_id=0,obj_index=0)
+ 		FLASH_TMP="/flashfs_tmp"
+ 		QPKGTAR="$FLASH_TMP/boot/qpkg.tar"
+ 		[ -d $FLASH_TMP ] || /bin/mkdir $FLASH_TMP
+@@ -65,7 +65,7 @@
+ CONFIG_DEV_FS=`/sbin/getcfg "CONFIG STORAGE" FS_TYPE -f /etc/platform.conf`
+ CUSTOMOUNT="/tmp/.customise"
+ [ -x /sbin/hal_app ] || return 1;
+-BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+ [ ! -z ${BOOT_DEV} ] || return 1;
+ 
+ if [ "x$CONFIG_DEV_NODE" != "x" ]; then
+@@ -295,6 +295,30 @@
+ [ ! -f /lib/modules/misc/comcerto_nand.ko ] || /sbin/insmod /lib/modules/misc/comcerto_nand.ko
+ [ ! -f /lib/modules/misc/al-nand.ko ] || /sbin/insmod /lib/modules/misc/al-nand.ko
+ 
++#insmod KVM module
++[ ! -f /lib/modules/KVM/kvm.ko ] || /sbin/insmod /lib/modules/KVM/kvm.ko ignore_msrs=1
++[ ! -f /lib/modules/KVM/kvm-amd.ko ] || /sbin/insmod /lib/modules/KVM//kvm-amd.ko nested=0
++[ ! -f /lib/modules/KVM/macvlan.ko ] || /sbin/insmod /lib/modules/KVM/macvlan.ko
++[ ! -f /lib/modules/KVM/macvtap.ko ] || /sbin/insmod /lib/modules/KVM/macvtap.ko
++[ ! -f /lib/modules/KVM/tun.ko ] || /sbin/insmod /lib/modules/KVM/tun.ko
++[ ! -f /lib/modules/KVM/vhost.ko ] || /sbin/insmod /lib/modules/KVM/vhost.ko
++[ ! -f /lib/modules/KVM/vhost_net.ko ] || /sbin/insmod /lib/modules/KVM/vhost_net.ko
++[ ! -f /lib/modules/KVM/ipv6.ko ] || /sbin/insmod /lib/modules/KVM/ipv6.ko
++[ ! -f /lib/modules/KVM/llc.ko ] || /sbin/insmod /lib/modules/KVM/llc.ko
++[ ! -f /lib/modules/KVM/stp.ko ] || /sbin/insmod /lib/modules/KVM/stp.ko
++[ ! -f /lib/modules/KVM/bridge.ko ] || /sbin/insmod /lib/modules/KVM/bridge.ko
++[ ! -f /lib/modules/KVM/virtio.ko ] || /sbin/insmod /lib/modules/KVM/virtio.ko
++[ ! -f /lib/modules/KVM/virtio_ring.ko ] || /sbin/insmod /lib/modules/KVM/virtio_ring.ko
++[ ! -f /lib/modules/KVM/virtio_net.ko ] || /sbin/insmod /lib/modules/KVM/virtio_net.ko
++[ ! -f /lib/modules/KVM/virtio_blk.ko ] || /sbin/insmod /lib/modules/KVM/virtio_blk.ko
++[ ! -f /lib/modules/KVM/virtio-rng.ko ] || /sbin/insmod /lib/modules/KVM/virtio-rng.ko
++[ ! -f /lib/modules/KVM/virtio_balloon.ko ] || /sbin/insmod /lib/modules/KVM/virtio_balloon.ko
++[ ! -f /lib/modules/KVM/virtio_console.ko ] || /sbin/insmod /lib/modules/KVM/virtio_console.ko
++[ ! -f /lib/modules/KVM/virtio_mmio.ko ] || /sbin/insmod /lib/modules/KVM/virtio_mmio.ko
++[ ! -f /lib/modules/KVM/virtio_pci.ko ] || /sbin/insmod /lib/modules/KVM/virtio_pci.ko
++[ ! -f /lib/modules/KVM/virtio_scsi.ko ] || /sbin/insmod /lib/modules/KVM/virtio_scsi.ko
++[ ! -f /lib/modules/KVM/vringh.ko ] || /sbin/insmod /lib/modules/KVM/vringh.ko
++
+ #insmod usb module
+ [ ! -f /lib/modules/misc/usb-common.ko ] || /sbin/insmod /lib/modules/misc/usb-common.ko 
+ [ ! -f /lib/modules/misc/usbcore.ko ] || /sbin/insmod /lib/modules/misc/usbcore.ko 2>>/dev/null
+@@ -318,7 +342,10 @@
+ 
+ #insmod LSI scsi module
+ [ ! -f /lib/modules/misc/raid_class.ko ] || /sbin/insmod /lib/modules/misc/raid_class.ko 2>>/dev/null
++[ ! -f /lib/modules/misc/mptbase.ko ] || /sbin/insmod /lib/modules/misc/mptbase.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/mptscsih.ko ] || /sbin/insmod /lib/modules/misc/mptscsih.ko 2>>/dev/null 
+ [ ! -f /lib/modules/misc/scsi_transport_sas.ko ] || /sbin/insmod /lib/modules/misc/scsi_transport_sas.ko 2>>/dev/null
++[ ! -f /lib/modules/misc/mptsas.ko ] || /sbin/insmod /lib/modules/misc/mptsas.ko 2>>/dev/null 
+ [ ! -f /lib/modules/misc/mpt2sas.ko ] || /sbin/insmod /lib/modules/misc/mpt2sas.ko 2>>/dev/null
+ [ ! -f /lib/modules/misc/mpt3sas.ko ] || /sbin/insmod /lib/modules/misc/mpt3sas.ko 2>>/dev/null
+ #insmod MV scsi moduel
+@@ -335,17 +362,23 @@
+     /sbin/hal_app --set_ec_reg func=0x01:0x6C,value=${hexTemp}
+ fi
+ #insmod network module
++[ ! -f /lib/modules/misc/r8168.ko ] || /sbin/insmod /lib/modules/misc/r8168.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/e1000.ko ] || /sbin/insmod /lib/modules/misc/e1000.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/mdio.ko ] || /sbin/insmod /lib/modules/misc/mdio.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/mii.ko ] || /sbin/insmod /lib/modules/misc/mii.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/pps_core.ko ] || /sbin/insmod /lib/modules/misc/pps_core.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/ptp.ko ] || /sbin/insmod /lib/modules/misc/ptp.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/libphy.ko ] || /sbin/insmod /lib/modules/misc/libphy.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/e1000e.ko ] || /sbin/insmod /lib/modules/misc/e1000e.ko 2>>/dev/null 
+ [ ! -f /lib/modules/misc/i2c-algo-bit.ko ] || /sbin/insmod /lib/modules/misc/i2c-algo-bit.ko 2>>/dev/null
+-if [ ! -f /etc/IS_TAS ]; then
+-	[ ! -f /lib/modules/misc/e1000e.ko ] || /sbin/insmod /lib/modules/misc/e1000e.ko 2>>/dev/null
+-	[ ! -f /lib/modules/misc/igb.ko ] || /sbin/insmod /lib/modules/misc/igb.ko 2>>/dev/null
+-	if [ -f /lib/modules/misc/r8152.ko ]; then
+-		[ ! -f /lib/modules/misc/mii.ko ] || /sbin/insmod /lib/modules/misc/mii.ko 2>>/dev/null
+-		[ ! -f /lib/modules/misc/usbnet.ko ] || /sbin/insmod /lib/modules/misc/usbnet.ko 2>>/dev/null
+-		/sbin/insmod /lib/modules/misc/r8152.ko 2>>/dev/null
+-	fi
+-	/etc/init.d/load_lan_module.sh
+-fi
++[ ! -f /lib/modules/misc/igb.ko ] || /sbin/insmod /lib/modules/misc/igb.ko 2>>/dev/null
++[ ! -f /lib/modules/misc/vmxnet3.ko ] || /sbin/insmod /lib/modules/misc/vmxnet3.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/tg3.ko ] || /sbin/insmod /lib/modules/misc/tg3.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/bnx2.ko ] || /sbin/insmod /lib/modules/misc/bnx2.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/bnx2x.ko ] || /sbin/insmod /lib/modules/misc/bnx2x.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/usbnet.ko ] || /sbin/insmod /lib/modules/misc/usbnet.ko 2>>/dev/null 
++[ ! -f /lib/modules/misc/ax88179_178a.ko ] || /sbin/insmod /lib/modules/misc/ax88179_178a.ko 2>>/dev/null 
++/etc/init.d/load_lan_module.sh
+ 
+ #insmod hwmond module
+ [ ! -f /lib/modules/misc/coretemp.ko ] || /sbin/insmod /lib/modules/misc/coretemp.ko
+@@ -400,12 +433,8 @@
+ ##########################################################################
+ #extract rootfs2.gz from boot partition
+ /bin/echo 65536 > /proc/sys/kernel/msgmnb
+-if [ "x${Model_Name}" = "xTS-X77" ]; then
+-	/sbin/hal_app --boot > /tmp/dom.conf
+-	/etc/init.d/reset_sata.sh 1>>/dev/kmsg 2>>/dev/kmsg
+-else
+-	/sbin/hal_app --boot
+-fi
++/bin/echo "extract rootfs2.gz from boot partition"
++/sbin/hal_app1 --boot
+ 
+ if [ -f /etc/IS_TAS ]; then
+ 	#insmod RTK sd card module
+@@ -691,7 +720,7 @@
+ 
+ [ -f /bin/md5sum ] || /bin/ln -sf busybox /bin/md5sum
+ 
+-BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+ /sbin/setcfg "System" "System Device" ${BOOT_DEV}
+ /sbin/setcfg "System" "System Device" ${BOOT_DEV} -f /etc/default_config/uLinux.conf
+ [ ! -x /etc/init.d/QTSCustomization_init.sh ] || /etc/init.d/QTSCustomization_init.sh start 1>/dev/null 2>/dev/null
+diff -Nauri a/init_disk.sh b/init_disk.sh
+--- a/init_disk.sh	2018-01-14 10:41:00.372963000 -0800
++++ b/init_disk.sh	2018-01-14 10:55:56.000000000 -0800
+@@ -8,8 +8,8 @@
+ CONFIG_DEV_NODE=`/sbin/getcfg "CONFIG STORAGE" DEVICE_NODE -f /etc/platform.conf`
+ CONFIG_DEV_PART=`/sbin/getcfg "CONFIG STORAGE" FS_ACTIVE_PARTITION -f /etc/platform.conf`
+ CONFIG_DEV_FS=`/sbin/getcfg "CONFIG STORAGE" FS_TYPE -f /etc/platform.conf`
+-if [ -x /sbin/hal_app ]; then
+-    BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++if [ -x /sbin/hal_app1 ]; then
++    BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+     EXT_ROOT="/dev/md13"
+ elif [ "x${BOOT_CONF}" = "xTS-NASARM" ]; then
+     BOOT_DEV="/dev/mtdblock"
+diff -Nauri a/init_final.sh b/init_final.sh
+--- a/init_final.sh	2018-01-14 10:41:00.372963000 -0800
++++ b/init_final.sh	2018-01-14 10:56:08.000000000 -0800
+@@ -4,8 +4,8 @@
+ UPDATEPKG_DIR="${ROOT_PART}/update_pkg"
+ FLASH_TMP="/flashfs_tmp"
+ # check if the HAL subsystem exist
+-if [ -x /sbin/hal_app ]; then
+-    BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++if [ -x /sbin/hal_app1 ]; then
++    BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+ else
+     BOOT_DEV="/dev/sdx"
+ fi
+diff -Nauri a/init_nas.sh b/init_nas.sh
+--- a/init_nas.sh	2018-01-14 10:41:00.376963000 -0800
++++ b/init_nas.sh	2018-01-14 10:56:18.000000000 -0800
+@@ -7,8 +7,8 @@
+ CONFIG_DEV_FS=`/sbin/getcfg "CONFIG STORAGE" FS_TYPE -f /etc/platform.conf`
+ # check if the HAL subsystem exist
+ modelname="$(/sbin/getcfg "System" "MODEL" -f /etc/config/uLinux.conf)"
+-if [ -x /sbin/hal_app ]; then
+-    BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++if [ -x /sbin/hal_app1 ]; then
++    BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+ elif [ "x${BOOT_CONF}" = "xTS-NASARM" ]; then
+ 	BOOT_DEV="/dev/mtdblock"
+ else
+diff -Nauri a/killnas.sh b/killnas.sh
+--- a/killnas.sh	2018-01-14 10:41:00.372963000 -0800
++++ b/killnas.sh	2018-01-14 10:56:28.000000000 -0800
+@@ -8,7 +8,7 @@
+ #
+ 
+ ECHO=/bin/echo
+-HAL_APP=/sbin/hal_app
++HAL_APP=/sbin/hal_app1
+ BOOT_DEV=""
+ 
+ if [ ! -f ${HAL_APP} ]; then
+diff -Nauri a/mountall b/mountall
+--- a/mountall	2018-01-14 10:41:00.380963000 -0800
++++ b/mountall	2018-01-14 10:56:37.000000000 -0800
+@@ -3,8 +3,8 @@
+ 
+ HD_DEVICE="/dev/md13"
+ EXT_MD_NAME="md13"
+-FLASH_RFS1=$(/sbin/hal_app --get_boot_pd_part port_id=0,obj_index=0)
+-FLASH_RFS2=$(/sbin/hal_app --get_boot_pd_part port_id=0,obj_index=1)
++FLASH_RFS1=$(/sbin/hal_app1 --get_boot_pd_part port_id=0,obj_index=0)
++FLASH_RFS2=$(/sbin/hal_app1 --get_boot_pd_part port_id=0,obj_index=1)
+ FLASH_TMP="/flashfs_tmp"
+ MNT_POINT="/mnt/ext"
+ CONFIG_Dev="/dev/md9"
+diff -Nauri a/shutdown_check.sh b/shutdown_check.sh
+--- a/shutdown_check.sh	2018-01-14 10:41:00.380963000 -0800
++++ b/shutdown_check.sh	2018-01-14 10:56:51.000000000 -0800
+@@ -1,8 +1,8 @@
+ #!/bin/sh
+ 
+ # check if the HAL subsystem exist
+-if [ -x /sbin/hal_app ]; then
+-    BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++if [ -x /sbin/hal_app1 ]; then
++    BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+ else
+     BOOT_DEV="/dev/sdx"
+ fi
+@@ -22,8 +22,8 @@
+        /sbin/rmmod ehci-hcd.ko
+         /sbin/insmod /lib/modules/misc/ehci-hcd.ko
+         sleep 3
+-        if [ -x /sbin/hal_app ]; then
+-            BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++        if [ -x /sbin/hal_app1 ]; then
++            BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+         fi
+     fi
+ fi
+diff -Nauri a/update_img.sh b/update_img.sh
+--- a/update_img.sh	2018-01-14 10:41:00.372963000 -0800
++++ b/update_img.sh	2018-01-14 11:01:36.000000000 -0800
+@@ -24,8 +24,8 @@
+ 
+ BLOCK_SIZE=512
+ # check if the HAL subsystem exist
+-if [ -x /sbin/hal_app ]; then
+-    BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++if [ -x /sbin/hal_app1 ]; then
++    BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+     EXT_ROOT="/dev/md13"
+ else
+     BOOT_DEV="/dev/sdx"
+@@ -99,8 +99,8 @@
+         /sbin/rmmod ehci-hcd.ko
+         /sbin/insmod /lib/modules/misc/ehci-hcd.ko
+         sleep 3
+-        if [ -x /sbin/hal_app ]; then
+-            BOOT_DEV=$(/sbin/hal_app --get_boot_pd port_id=0)
++        if [ -x /sbin/hal_app1 ]; then
++            BOOT_DEV=$(/sbin/hal_app1 --get_boot_pd port_id=0)
+         fi
+     fi
+ fi
+@@ -525,8 +525,8 @@
+ 	/bin/cat > /etc/rcK.d/K25update_recover <<__EOF__
+ #!/bin/sh
+ [ -f "/bin/cmp" ] || /bin/ln -sf /bin/busybox /bin/cmp
+-if [ -x /sbin/hal_app ]; then
+-BOOT_DEV=\$(/sbin/hal_app --get_boot_pd port_id=0)
++if [ -x /sbin/hal_app1 ]; then
++BOOT_DEV=\$(/sbin/hal_app1 --get_boot_pd port_id=0)
+ else
+ BOOT_DEV="/dev/sdx"
+ fi
+@@ -935,38 +935,6 @@
+ 
+ /sbin/write_log "[Firmware Update] Started updating the firmware." 4
+ 
+-if [ -f $UPDATE_FOLDER/update_bios.sh ]; then
+-	$UPDATE_FOLDER/update_bios.sh $UPDATE_FOLDER/flashrom.img
+-fi
+-
+-if [ -f $UPDATE_FOLDER/update_pic.sh ]; then
+-    $UPDATE_FOLDER/update_pic.sh
+-fi
+-
+-if [ -f $UPDATE_FOLDER/update_ec.sh ]; then
+-    $UPDATE_FOLDER/update_ec.sh start
+-fi
+-
+-if [ -f $UPDATE_FOLDER/find_ASM107 ]; then
+-    $UPDATE_FOLDER/find_ASM107 start
+-fi
+-
+-if [ -f $UPDATE_FOLDER/update_tbt3_nvm.sh ]; then
+-    $UPDATE_FOLDER/update_tbt3_nvm.sh
+-fi
+-
+-if [ -f $UPDATE_FOLDER/update_asm1062.sh ]; then
+-    $UPDATE_FOLDER/update_asm1062.sh
+-fi
+-
+-if [ -f $UPDATE_FOLDER/gl352x_update.sh ]; then
+-	$UPDATE_FOLDER/gl352x_update.sh
+-fi
+-
+-if [ -f $UPDATE_FOLDER/sas_fw/sas_fw_update.sh ]; then
+-        $UPDATE_FOLDER/sas_fw/sas_fw_update.sh
+-fi
+-
+ if [ "x${BOOT_CONF}" = "xTS-NASX86" ]; then
+ 	if [ $USING_HDD = 1 ]; then
+ 		echo "Update image using HDD ..."
+diff -Nauri a/update.sh b/update.sh
+--- a/update.sh	2018-01-14 10:41:00.372963000 -0800
++++ b/update.sh	2018-01-14 11:01:23.000000000 -0800
+@@ -522,7 +522,6 @@
+ 			/sbin/ubidetach -m $UPDATE_TMP_PARTITION
+ 		fi
+ 	fi
+-	[ -f ${UPDATE_FOLDER}/update_img.sh ] && /bin/mv ${UPDATE_FOLDER}/update_img.sh /tmp/update_img.sh
+ 
+     if [ -f /etc/IS_TAS ]; then
+ 		[ -n "$(ps -ef|grep zygote |grep -v grep)" ] && { 

@@ -1,0 +1,36 @@
+
+#------------- ADDED by POCOPICO
+echo "Loading extra modules "
+
+##### Some additional Ethernet devices #####
+/sbin/insmod /lib/modules/misc/mii.ko
+/sbin/insmod /lib/modules/misc/e1000.ko
+/sbin/insmod /lib/modules/misc/e1000e.ko
+/sbin/insmod /lib/modules/misc/vmxnet3.ko
+/sbin/insmod /lib/modules/misc/tg3.ko
+/sbin/insmod /lib/modules/misc/bnx2.ko
+/sbin/insmod /lib/modules/misc/bnx2x.ko
+/sbin/insmod /lib/modules/misc/bnxt_en.ko
+##### Some USB ETHERNET devices #####
+/sbin/insmod /lib/modules/misc/usbnet.ko
+/sbin/insmod /lib/modules/misc/dm9601.ko
+/sbin/insmod /lib/modules/misc/ax88179_178a.ko
+##### SCSI Transport devices #####
+/sbin/insmod /lib/modules/misc/scsi_transport_spi.ko
+/sbin/insmod /lib/modules/misc/vmw_pvscsi.ko
+/sbin/insmod /lib/modules/misc/mptbase.ko
+/sbin/insmod /lib/modules/misc/mptscsih.ko
+
+/sbin/insmod /lib/modules/misc/mptspi.ko
+/sbin/insmod /lib/modules/misc/mptsas.ko
+/sbin/insmod /lib/modules/misc/mptctl.ko
+/sbin/insmod /lib/modules/misc/mpt3sas.ko
+/sbin/insmod /lib/modules/misc/megaraid.ko
+/sbin/insmod /lib/modules/misc/megaraid_mm.ko
+/sbin/insmod /lib/modules/misc/megaraid_sas.ko
+/sbin/insmod /lib/modules/misc/megaraid_mbox.ko
+##### OTHER #####
+/sbin/insmod /lib/modules/misc/softdog.ko
+
+
+#------------------------------------- END of POCOPICO

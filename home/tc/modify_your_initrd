@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# Using this script you'll be able to mount your existing boot drive 
+# to extract your initrd.boot in order to perform modifications and
+# then execure the re_repacking to repack your initrd image
+
+
+BOOT_DRIVES=$(./hal_app2)
+WORKING_DIR=/home/tc/
+BOOT_DIR=/mnt/${BOOT_DRIVES}2/boot
+
+
+
+mount_boot()
+{
+	echo $1
+	[ -d /mnt/${BOOT_DRIVES}2 ] || mkdir /mnt/${BOOT_DRIVES}2
+	[ -d /mnt/${BOOT_DRIVES}2/boot ] || mount /dev/${BOOT_DRIVES}2 /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+	[ $? = 0 ] || error_stop "Try to mount /dev/${BOOT_DRIVES}2 failed."
+}
+
+
+umount_boot()
+{
+	umount /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+	
+}
+
+
+
+extract_initrd()
+{
+	echo $1
+	[ -d ${WORKING_DIR} ] || mkdir ${WORKING_DIR}
+	[ ! -e ${WORKING_DIR}/initrd.boot ] || rm -f ${WORKING_DIR}/initrd.boot
+	[ ! -d ${WORKING_DIR}/initrd ] || rm -rf ${WORKING_DIR}/initrd
+	cp -f ${BOOT_DIR}/initrd.boot ${WORKING_DIR}
+	cd ${WORKING_DIR}
+	if [ -e initrd.boot ]; then
+		mv ./initrd.boot ./initrd.boot.gz
+		gzip -d ./initrd.boot.gz
+	else
+		echo "Decompress the ram disk failed."
+		rm -f ./initrd.boot.*
+		return 1
+	fi
+	[ -d ./initrd ] || mkdir ./initrd
+	cd ./initrd
+	cpio -id < ../initrd.boot 1>/dev/null 2>&1
+	rm -f ${WORKING_DIR}/initrd.boot
+}
+
+
+echo "Trying to mount your boot drive"
+mount_boot
+
+echo "Trying to extract your initrd image"
+extract_initrd
+
+echo "Unmounting boot"
+umount_boot
+
+echo "Done, perform any required changes and then use pack_your_initrd to repack the initrd and copy it over to your boot drive"
+
+
+
+
+

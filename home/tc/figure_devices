@@ -1,0 +1,297 @@
+#!/bin/sh
+#
+# This scripts try to check your configuration and try to figure out things for you to modify model.configuration
+#
+#
+
+ 
+BOOT_DRIVES=$(./hal_app2)
+WORKING_DIR=/home/tc/
+BOOT_DIR=/mnt/${BOOT_DRIVES}2/boot
+MODELCONF="initrd/etc/model.conf"
+
+
+mount_boot()
+{
+	echo $1
+	[ -d /mnt/${BOOT_DRIVES}2 ] || mkdir /mnt/${BOOT_DRIVES}2
+	[ -d /mnt/${BOOT_DRIVES}2/boot ] || mount /dev/${BOOT_DRIVES}2 /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+	[ $? = 0 ] || error_stop "Try to mount /dev/${BOOT_DRIVES}2 failed."
+}
+
+
+umount_boot()
+{
+	umount /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+}
+
+
+getethernet()
+{
+
+
+
+
+ethnum=`lspci |grep -i eth | wc -l`
+
+echo "Total eth devices discovered = $ethnum"
+
+eth=1
+
+while [ $eth -le $ethnum ] 
+
+do
+
+ethdev="`lspci |grep -i ether | cut -c 1-8 |sed -n "${eth}p"`"
+
+DEV_BUS=$(echo ${ethdev} | cut -d' ' -f1) ;  MYBUS=$(echo ${DEV_BUS} | cut -d':' -f1)  ;DEV_BUS=$(echo ${DEV_BUS} | cut -d':' -f2)  ;MYDEV=$(echo ${DEV_BUS} | cut -d'.' -f1) ;MYFUNC=$(echo ${DEV_BUS} | cut -d'.' -f2) ;ethbus=$(printf "B%02d:D%02d:F%0d" "0x$MYBUS" "0x$MYDEV" "0x$MYFUNC")
+
+sed "/System Network $eth/!b;n;cDEV_BUS = $ethbus" model.conf > newmodel ; mv newmodel model.conf
+
+echo "[System Network $eth] "
+echo "DEV_BUS = $ethbus"
+
+let eth=$eth+1
+done 
+
+}
+
+
+
+
+getusbbus()
+{
+
+# sed '/<key>ConnectionString<\/key>/!b;n;c<string>changed_value</string>' file
+#sed "/System Disk 11/!b;n;cDEV_BUS=$satabus" model.conf
+
+
+usbnum=`lspci |grep -i usb |grep -i controller | wc -l`
+
+echo "Total USB controllers  discovered = $usbnum"
+
+usb=1
+
+while [ $usb -le $usbnum ] 
+
+do
+
+
+usbdev="`lspci |grep -i usb |grep -i controller | cut -c 1-8 |sed -n "${usb}p"`"
+
+DEV_BUS=$(echo ${usbdev} | cut -d' ' -f1) ;  MYBUS=$(echo ${DEV_BUS} | cut -d':' -f1)  ;DEV_BUS=$(echo ${DEV_BUS} | cut -d':' -f2)  ;MYDEV=$(echo ${DEV_BUS} | cut -d'.' -f1) ;MYFUNC=$(echo ${DEV_BUS} | cut -d'.' -f2) ;usbbus=$(printf "B%02d:D%02d:F%0d" "0x$MYBUS" "0x$MYDEV" "0x$MYFUNC")
+
+sed "/Usb Port $usb/!b;n;cDEV_BUS = $usbbus" model.conf > newmodel ; mv newmodel model.conf
+
+echo "[Usb Port $usb] "
+echo "DEV_BUS = $usbbus"
+
+let usb=$usb+1
+done 
+
+
+
+}
+
+getbootbus()
+{
+
+echo "Getting Boot Disk information"
+
+# udevadm info -a -p  $(udevadm info -q path -n /dev/$BOOT_DRIVES)
+
+
+
+if [ `lspci |grep -i vmware | wc -l` -ge 1 ] ; then 
+bootbus=`udevadm info -a -p  $(udevadm info -q path -n /dev/$BOOT_DRIVES) | head -30 | grep -i pci |grep parent | cut -d '/' -f 4 |cut -c 6-77`
+DEV_BUS=$(echo ${bootbus} | cut -d' ' -f1) ;  MYBUS=$(echo ${DEV_BUS} | cut -d':' -f1)  ;DEV_BUS=$(echo ${DEV_BUS} | cut -d':' -f2)  ;MYDEV=$(echo ${DEV_BUS} | cut -d'.' -f1) ;MYFUNC=$(echo ${DEV_BUS} | cut -d'.' -f2) ;bootbus=$(printf "B%02d:D%02d:F%0d" "0x$MYBUS" "0x$MYDEV" "0x$MYFUNC")
+
+sed "/Boot Disk 1/!b;n;cDEV_BUS = $bootbus" model.conf > newmodel ; mv newmodel model.conf
+
+echo "[Boot Disk 1]"
+echo "$bootbus"
+
+else 
+
+bootbus=` udevadm info -a -p  $(udevadm info -q path -n /dev/$BOOT_DRIVES) |head -30 |grep pci | grep parent | cut -d '/' -f 4 | cut -c 6-77`
+DEV_BUS=$(echo ${bootbus} | cut -d' ' -f1) ;  MYBUS=$(echo ${DEV_BUS} | cut -d':' -f1)  ;DEV_BUS=$(echo ${DEV_BUS} | cut -d':' -f2)  ;MYDEV=$(echo ${DEV_BUS} | cut -d'.' -f1) ;MYFUNC=$(echo ${DEV_BUS} | cut -d'.' -f2) ;bootbus=$(printf "B%02d:D%02d:F%0d" "0x$MYBUS" "0x$MYDEV" "0x$MYFUNC")
+
+sed "/Boot Disk 1/!b;n;cDEV_BUS = $bootbus" model.conf > newmodel ; mv newmodel model.conf
+
+echo "[Boot Disk 1]"
+echo "DEV_BUS = $bootbus"
+
+
+fi
+
+}
+
+
+getsatacontroller()
+
+{
+
+echo "Trying to figure out connected disk bus "
+
+availabledisks="`ls /dev/sd* |cut -c 1-8 | sort -n |uniq  |cut -c 6-99 | grep -v $BOOT_DRIVES`"
+rotdev=11
+ssddev=6
+echo "Found Disks : "
+echo "$availabledisks"
+
+for satadev in $availabledisks 
+do
+
+  if [  `udevadm info -a -p  $(udevadm info -q path -n /dev/${satadev}) | grep KERNELS |grep -i usb |wc -l` -ge 1 ] ; then
+ pcibus=`udevadm info -a -p  $(udevadm info -q path -n /dev/${satadev}) | grep KERNELS |grep -i usb|grep KERNELS | tail -2 |head -1`
+ echo "$satadev is a USB Disk on PCI BUS $PCIBUS"
+	else 
+	pcibus=`udevadm info -a -p  $(udevadm info -q path -n /dev/${satadev}) | grep KERNELS  | tail -2 |head -1 | cut -d '"' -f 2 | cut -c 6-99`
+	DEV_BUS=$(echo ${pcibus} | cut -d' ' -f1) ;  MYBUS=$(echo ${DEV_BUS} | cut -d':' -f1)  ;DEV_BUS=$(echo ${DEV_BUS} | cut -d':' -f2)  ;MYDEV=$(echo ${DEV_BUS} | cut -d'.' -f1) ;MYFUNC=$(echo ${DEV_BUS} | cut -d'.' -f2) ;satabus=$(printf "B%02d:D%02d:F%0d" "0x$MYBUS" "0x$MYDEV" "0x$MYFUNC")
+	if [ `cat /sys/block/${satadev}/queue/rotational` -ge 1 ] ;then
+	let devport=`udevadm info -a -p  $(udevadm info -q path -n /dev/${satadev}) |grep pci | head -1 | cut -d '/' -f 6 | cut -c 4-99`-1
+	sed "/System Disk $rotdev/!b;n;cDEV_BUS = $satabus" model.conf > newmodel ; mv newmodel model.conf
+	sed "/System Disk $rotdev/!b;n;n;cDEV_PORT = $devport" model.conf > newmodel ; mv newmodel model.conf
+	echo "[System Disk $rotdev] "
+	echo "DEV_BUS = $satabus  "
+	echo "DEV_PORT = $devport"
+	let rotdev=$rotdev+1
+	
+	else 
+	let devport=`udevadm info -a -p  $(udevadm info -q path -n /dev/${satadev}) |grep pci | head -1 | cut -d '/' -f 6 | cut -c 4-99`-1
+	sed "/System Disk $rotdev/!b;n;cDEV_BUS = $satabus" model.conf > newmodel ; mv newmodel model.conf
+	sed "/System Disk $rotdev/!b;n;n;cDEV_PORT = $devport" model.conf > newmodel ; mv newmodel model.conf
+	echo "[System Disk $ssddev] "
+	echo "DEV_BUS = $satabus  "
+	echo "DEV_PORT = $devport"
+	let ssddev=$ssddev+1
+	fi
+fi
+
+done 
+
+}
+
+getmemorymodules()
+
+{
+
+
+totalslotsinmodel=`grep -ie SLOT model.conf |grep ADDR|wc -l`
+
+memslot=1
+
+echo "Finding memory slots"
+
+
+echo "Trying to figure out memory modules"
+
+echo "Loading additional tinycore software"
+
+su - tc -c 'tce-load -wi dmidecode.tcz'
+
+dmidecode | grep -B 1 -A 5 -m  $totalslotsinmodel  "Memory Device Mapped Address" | grep -e "Physical Device Handle" -e "Range Size" > foundmemory
+
+
+
+cat  foundmemory |grep -i handle |cut -d ':' -f 2 | while read line
+
+        do
+        handle="$line"
+        memorysize="`grep -B 1 "$line" foundmemory  |head -1 | cut -d ':' -f 2`"
+
+        decaddr=$(printf "%02d" "$handle" )
+        echo "Found Slot : $handle , Decimal : $decaddr, holding RAM size of : $memorysize"
+		
+		sed "/SLOT${memslot}_ADDR/!b;cSLOT${memslot}_ADDR = 1, $decaddr, I1" model.conf > newmodel ; mv newmodel model.conf
+		
+		echo "SLOT${memslot}_ADDR = 1, $decaddr, I1"
+		let memslot=$memslot+1
+		
+        done
+rm foundmemory
+
+}
+
+getpcibridge()
+{
+
+
+pcinum=`lspci |grep -i pci |grep -i bridge | wc -l`
+supportedpci=`grep -i "System PCIE SLOT" model.conf |wc -l`
+
+if [ $pcinum -gt $supportedpci ] ; then
+ echo "Found more PCI devices than your current model $CONFMODEL is supporting, maxing selections to that number verify yourself"
+ let pcinum=$supportedpci
+ fi 
+
+
+
+echo "Total PCI Bridges discovered = $pcinum"
+
+pci=1
+
+while [ $pci -le $pcinum ] 
+
+do
+
+
+pcidev="`lspci |grep -i pci |grep -i bridge | cut -c 1-8 |sed -n "${pci}p"`"
+
+DEV_BUS=$(echo ${pcidev} | cut -d' ' -f1) ;  MYBUS=$(echo ${DEV_BUS} | cut -d':' -f1)  ;DEV_BUS=$(echo ${DEV_BUS} | cut -d':' -f2)  ;MYDEV=$(echo ${DEV_BUS} | cut -d'.' -f1) ;MYFUNC=$(echo ${DEV_BUS} | cut -d'.' -f2) ;pcibus=$(printf "B%02d:D%02d:F%0d" "0x$MYBUS" "0x$MYDEV" "0x$MYFUNC")
+
+sed "/System PCIE SLOT $pci/!b;n;cDEV_BUS = $pcibus" model.conf > newmodel ; mv newmodel model.conf
+
+echo "[System PCIE SLOT $pci] "
+echo "DEV_BUS = $pcibus"
+
+let pci=$pci+1
+
+done 
+
+
+}
+
+visualyverify()
+{
+
+echo "Please check the below output for changes we performed in $MODELCONF"
+echo "-------------------------------------------------------------------------"
+
+grep -A 1 -ie "System Network"     $MODELCONF
+grep -A 1 -ie "Boot Disk 1"        $MODELCONF
+grep -A 2 -ie "System Disk"        $MODELCONF
+grep -A 1 -ie "Usb Port"           $MODELCONF
+grep -A 1 -ie "System PCIE SLOT"   $MODELCONF
+grep -ie SLOT $MODELCONF |grep ADDR
+
+echo "----------------------------------------------------------------={ DONE }=---------"
+
+}
+
+
+CONFMODEL="`grep -i "MODEL ="  $MODELCONF |head -1  | cut -d '=' -f 2`"
+
+echo "This script will try to determine the DEV_BUS of your devices, please verify generated model.conf"
+
+echo "Getting model.conf from your initrd folder"
+
+cp $MODELCONF model.conf 
+
+
+getethernet
+getbootbus
+getsatacontroller
+getusbbus
+getpcibridge
+getmemorymodules
+
+echo "Done with detection, i'm putting modified model.conf back to initrd location"
+
+cp model.conf $MODELCONF
+
+visualyverify
+
+echo "Please verify model.conf and then execute ./pack_your_initrd"
+
+

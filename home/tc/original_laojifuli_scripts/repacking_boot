@@ -1,0 +1,124 @@
+#!/bin/sh
+#该脚本出自nasyun.com那是云论坛Mojelly，便于已有引导玩家微调initrd系统文件，避免每次需要重制引导浪费时间。
+#该脚本仅用于学习、了解Linux相关技术知识，禁止将本脚本或者黑Q用于任何商业用途！
+
+#This script by Mojelly, Convenient for existing boot to fine-tune the initrd file,
+#Avoiding wasting time every time you need to re-create the boot.
+#This script is only used to learn and understand Linux related technical knowledge,
+#It is forbidden to use it or HackQNAP for any commercial purpose!
+
+mount_boot()
+{
+	echo $1
+	[ -d /mnt/${BOOT_DRIVES}2 ] || mkdir /mnt/${BOOT_DRIVES}2
+	[ -d /mnt/${BOOT_DRIVES}2/boot ] || mount /dev/${BOOT_DRIVES}2 /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+	[ $? = 0 ] || error_stop "Try to mount /dev/${BOOT_DRIVES}2 failed."
+}
+
+umount_boot()
+{
+	umount /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+	exit 0
+}
+
+extract_initrd()
+{
+	echo $1
+	[ -d ${WORKING_DIR} ] || mkdir ${WORKING_DIR}
+	[ ! -e ${WORKING_DIR}/initrd.boot ] || rm -f ${WORKING_DIR}/initrd.boot
+	[ ! -d ${WORKING_DIR}/initrd ] || rm -rf ${WORKING_DIR}/initrd
+	cp -f ${BOOT_DIR}/initrd.boot ${WORKING_DIR}
+	cd ${WORKING_DIR}
+	if [ -e initrd.boot ]; then
+		mv ./initrd.boot ./initrd.boot.gz
+		gzip -d ./initrd.boot.gz
+	else
+		echo "Decompress the ram disk failed."
+		rm -f ./initrd.boot.*
+		return 1
+	fi
+	[ -d ./initrd ] || mkdir ./initrd
+	cd ./initrd
+	cpio -id < ../initrd.boot 1>/dev/null 2>&1
+	rm -f ${WORKING_DIR}/initrd.boot
+}
+
+packing_initrd()
+{
+	echo $1
+
+	####使用预设命令行自动复制文件到initrd目录 ####copy something to initrd directory
+	#cp -f model_Q0120_Q0160_10_10.conf ${WORKING_DIR}/initrd/etc/
+	#cp -f r8168.ko ${WORKING_DIR}/initrd/lib/modules/misc/
+	
+	cd ${WORKING_DIR}
+	[ ! -e initrd.boot ] || rm -f ./initrd.boot
+	cd ./initrd
+	find . | cpio -o -H newc | gzip > ../initrd.boot
+}
+
+cp_initrd()
+{
+	echo $1
+	cd ${WORKING_DIR}
+	[ -e initrd.boot ] && cksum initrd.boot > initrd.boot.cksum
+	[ $? = 0 ] || error_stop "initrd.boot file No found."
+	mv -f ./initrd.boot /mnt/${BOOT_DRIVES}2/boot/
+	[ $? = 0 ] || error_stop "Transport QNAP RAM disk failed."
+	mv -f ./initrd.boot.cksum /mnt/${BOOT_DRIVES}2/boot/
+}
+
+error_stop()
+{
+	echo $1
+	umount /dev/${BOOT_DRIVES}2 1>/dev/null 2>&1
+	umount /dev/${BOOT_DRIVES}3 1>/dev/null 2>&1
+	exit 1
+}
+
+BOOT_DRIVES=$(./hal_app2)
+WORKING_DIR=/home/tc/USINGBOOT
+BOOT_DIR=/mnt/${BOOT_DRIVES}2/boot
+
+case $1 in
+	ex)   #extract
+	mount_boot "Mount the QNAP master boot partion"
+	extract_initrd "extract initrd file. Please wait a while."
+	[ $? = 0 ] || error_stop "Extract initrd failed."
+	umount_boot
+	echo "Extract initrd successful."
+	echo 
+
+	;;
+	
+	pa)   #packing
+	mount_boot "Mount the QNAP master boot partion"
+	packing_initrd "Re-packing the QNAP RAM disk. Please wait a while."
+	cp_initrd "Copy initrd file to boot. Please wait a while."
+	[ $? = 0 ] || error_stop "Re-packing initrd failed."
+	umount_boot
+	echo "Re-packing initrd successful."
+	echo "You need to restart system to install QNAP."
+	echo
+	;;
+	
+	ep)   #extract & packing
+	mount_boot "Mount the QNAP master boot partion"
+	extract_initrd "Extract initrd file. Please wait a while."
+	[ $? = 0 ] || error_stop "Extract initrd failed."
+	packing_initrd "Re-packing the QNAP RAM disk. Please wait a while."
+	cp_initrd "Copy initrd file to boot. Please wait a while."
+	[ $? = 0 ] || error_stop "Re-packing initrd failed."
+	umount_boot
+	echo "Re-packing initrd successful."
+	echo "You need to restart system to install QNAP."
+	echo	
+	;;
+	
+	*)
+	echo "usage: [ ex ] | [ pa ] | [ ep ]"
+	echo "使用说明：使用ex参数解包；使用pa参数打包；使用ep参数解包并打包"
+	exit 1
+	;;
+	
+esac

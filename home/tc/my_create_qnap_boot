@@ -1,0 +1,233 @@
+#!/bin/sh
+# This is developed by laojifuli to create QNAP boot disk
+
+# Define the model type and firmware by get patch name or hardcode
+# I recommend to use the patch name, make sure you do correctpatch
+
+MODEL_TYPE="QY380_QY390_10_11"
+PATCHED_FIRMWARE="TS-X83XU_20200520-h4.5.0.1308"
+DOWNLOAD_URL="https://download.qnap.com/Storage/TS-X85XU/"
+
+# DO NOT CHANGE AFTER THIS LINE 
+
+DATE=`date +%d%m%Y%H%M`
+
+
+extract_initrd()
+{
+    rm -f ./initrd.boot
+    rm -rf ./initrd
+    cp -f $1 ./
+    [ -f ./initrd.boot ] || return 1
+    if [ "$2" = "lzma" ]; then
+        mv ./initrd.boot ./initrd.boot.lzma
+        unlzma ./initrd.boot.lzma
+    else
+        mv ./initrd.boot ./initrd.boot.gz
+        gzip -d ./initrd.boot.gz
+    fi
+    if [ $? != 0 ]; then
+        echo "Decompress the ram disk failed."
+        rm -f ./initrd.boot.*
+        return 1
+    fi
+    [ -d ./initrd ] || mkdir ./initrd
+    cd ./initrd
+    cpio -id < ../initrd.boot 1>/dev/null 2>&1
+    cd ${WORKING_DIR}
+    rm -f ./initrd.boot
+    return 1
+}
+
+packing_initrd()
+{
+	rm -f ./initrd.boot
+	cd ./initrd
+	find . | cpio -o -H newc | gzip > ../initrd.boot
+}
+
+repair_rootfs2()
+{
+	echo $1
+	REPAIR_DIR=/home/tc/ROOTFS2
+	if [ -f /mnt/${BOOT_DRIVES}2/boot/rootfs2.bz ]; then
+		mkdir -p ${REPAIR_DIR}
+		cp /mnt/${BOOT_DRIVES}2/boot/rootfs2.bz ${REPAIR_DIR}/rootfs2.lzma
+		cd ${REPAIR_DIR}
+		unlzma rootfs2.lzma
+		bzip2 -z rootfs2
+		mv rootfs2.bz2 rootfs2.bz
+		cksum rootfs2.bz > rootfs2.bz.cksum
+		rm -f /mnt/${BOOT_DRIVES}2/boot/rootfs2.bz
+		rm -f /mnt/${BOOT_DRIVES}2/boot/rootfs2.bz.cksum
+		cp -f * /mnt/${BOOT_DRIVES}2/boot/
+		rm -rf ${REPAIR_DIR}
+		cd ${WORKING_DIR}
+	else
+		error_stop "Repair failed, please restart the system and try again."
+	fi
+}
+
+clear_boot()
+{
+    echo $1
+    rm -rf /mnt/${BOOT_DRIVES}2/*
+    rm -rf /mnt/${BOOT_DRIVES}3/*
+}
+
+my_patch()
+{
+    if [ -d ./initrd ]; then
+        cd ./initrd/etc/init.d/
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./chkcfgpart.sh
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./functions
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./init_check.sh
+        myhg=`grep -n 'msgmnb' ./init_check.sh`
+        myhg=${myhg%%:*}
+        myhg0=$((${myhg} +1))
+        myhg1=$((${myhg} +6))
+        sed -i "${myhg0},${myhg1}d" ./init_check.sh
+        sed "/msgmnb/a /sbin/hal_app1 --boot" ./init_check.sh -i
+        if [ ${UD} = 1 ]; then
+            sed "/msgmnb/a sleep 10" ./init_check.sh -i
+        else
+            sed '/msgmnb/a /bin/echo "extract rootfs2.gz from boot partition"' ./init_check.sh -i
+        fi
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./init_disk.sh
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./init_final.sh
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./init_nas.sh
+        sed -i 's/HAL_APP=\/sbin\/hal_app/HAL_APP=\/sbin\/hal_app1/' ./killnas.sh
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./mountall
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./shutdown_check.sh
+        sed -i '/{UPDATE_FOLDER}\/update_img.sh/d' ./update.sh
+        sed -i 's/hal_app --get_boot_pd/hal_app1 --get_boot_pd/' ./update_img.sh
+    fi
+}
+
+error_stop()
+{
+    echo $1
+    umount /dev/${BOOT_DRIVES}2 1>/dev/null 2>&1
+    exit 1
+}
+
+# Try to locate laojifuli boot disk
+BOOT_DRIVES=$(./hal_app2)
+UD=`cat /sys/block/${BOOT_DRIVES}/removable`
+WORKING_DIR=$(pwd)
+IS_PATCHED="true"
+
+if [ "x$BOOT_DRIVES" = "x" ]; then
+    echo "Could not found laojifuli's QNAP boot disk."
+    exit 1
+fi
+
+# mount the QNAP master boot partion
+[ -d /mnt/${BOOT_DRIVES}2 ] || mkdir /mnt/${BOOT_DRIVES}2
+mount -t ext2 /dev/${BOOT_DRIVES}2 /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+[ $? = 0 ] || error_stop "Try to mount /dev/${BOOT_DRIVES}2 failed."
+[ -d /mnt/${BOOT_DRIVES}3 ] || mkdir /mnt/${BOOT_DRIVES}3
+mount -t ext2 /dev/${BOOT_DRIVES}3 /mnt/${BOOT_DRIVES}3 1>/dev/null 2>&1
+[ $? = 0 ] || error_stop "Try to mount /dev/${BOOT_DRIVES}3 failed."
+
+clear_boot "Clear the boot, Please wait a while."    #If you do not need to clear the boot directory, add # to the beginning of this line to comment out.
+
+# check if the boot partition already created, if not we will download
+# the QNAP firmware which is defined by ${PATCHED_FIRMWARE}
+# You can do the QNAP firmware patch choose which one you like and patch it by yourself
+
+if [ -f /mnt/${BOOT_DRIVES}2/boot/initrd.boot ]; then
+    extract_initrd "/mnt/${BOOT_DRIVES}2/boot/initrd.boot"
+    if [ $? != 0 ]; then
+	#rm -f  ./${PATCHED_FIRMWARE}.zip 
+        mv ./${PATCHED_FIRMWARE}.zip ./${PATCHED_FIRMWARE}.$DATE.zip
+        echo "Start to download the QNAP firmware. Please wait a while."
+	wget ${DOWNLOAD_URL}${PATCHED_FIRMWARE}.zip
+	[ $? = 0 ] || error_stop "Download the QNAP firmware failed."
+    fi
+else
+    if [ ! -f ./${PATCHED_FIRMWARE}.zip ]; then
+        echo "Start to download the QNAP firmware. Please wait a while."
+        wget ${DOWNLOAD_URL}${PATCHED_FIRMWARE}.zip
+        [ $? = 0 ] || error_stop "Download the QNAP firmware failed."
+    fi
+fi
+
+if [ -f ./${PATCHED_FIRMWARE}.zip ]; then
+    IS_PATCHED="false"
+    rm -f ./initrd.boot
+    rm -rf ./initrd
+	echo "Uncompressing QNAP original firmware"
+    unzip ./${PATCHED_FIRMWARE}.zip
+    #rm -f ./${PATCHED_FIRMWARE}.zip
+    mv ./${PATCHED_FIRMWARE}.zip ./${PATCHED_FIRMWARE}.$DATE.zip
+    ./pc1 d QNAPNASVERSION4 ./${PATCHED_FIRMWARE}.img ./decoded_firmware.tar.gz
+    
+    [ $? = 0 ] || error_stop "Unable to decoded QNAP firmware."
+    rm -f ./${PATCHED_FIRMWARE}.img
+
+    tar -xvf decoded_firmware.tar.gz bzImage bzImage.cksum initrd.boot initrd.boot.cksum qpkg.tar qpkg.tar.cksum rootfs2.bz rootfs2.bz.cksum rootfs_ext.tgz rootfs_ext.tgz.cksum
+    rm -f decoded_firmware.tar.gz
+
+    [ -d /mnt/${BOOT_DRIVES}2/boot ] || mkdir -p /mnt/${BOOT_DRIVES}2/boot    
+    
+    mv -f bzImage bzImage.cksum initrd.boot initrd.boot.cksum qpkg.tar qpkg.tar.cksum rootfs2.bz rootfs2.bz.cksum  rootfs_ext.tgz rootfs_ext.tgz.cksum /mnt/${BOOT_DRIVES}2/boot/
+
+    extract_initrd "/mnt/${BOOT_DRIVES}2/boot/initrd.boot" "lzma"
+fi
+
+[ -d ./initrd ] || error_stop "Unable to establish the QNAP RAM disk."
+
+
+
+# patch the QNAP system
+if [ ${IS_PATCHED} != "true" ]; then
+	rm -f ./initrd.boot
+	cp -f ./hal_app1 ./initrd/sbin/hal_app1
+	cp -f ./hal_app2 ./initrd/sbin/hal_app2
+	cd ./initrd/bin
+	ln -s busybox tail
+	cd ../etc
+	cp -f ./model_${MODEL_TYPE}.conf ./model.conf
+	[ $? = 0 ] ||  error_stop "Create model.conf failed."
+	cp -f ./hal_util_${MODEL_TYPE}.conf ./hal_util.conf
+	[ $? = 0 ] ||  error_stop "Create hal_util.conf failed."
+	cd ${WORKING_DIR}
+        my_patch
+fi
+
+cd ${WORKING_DIR}
+./hardware_check
+./figure_devices
+echo "Re-packing the QNAP RAM disk. Please wait a while."
+packing_initrd
+cd ${WORKING_DIR}
+
+if [ ! -f ./initrd.boot ]; then
+	error_stop "Re-packing the QNAP RAM disk failed."
+fi
+
+# cp the model
+rm -rf ./mymodel
+mkdir ./mymodel
+cp -f ./initrd/etc/hal_util.conf ./mymodel
+cp -f ./initrd/etc/model.conf ./mymodel
+cp -f ./initrd/etc/hal_util_${MODEL_TYPE}.conf ./mymodel
+cp -f ./initrd/etc/model_${MODEL_TYPE}.conf ./mymodel
+chmod -R 777 ./mymodel
+
+cksum initrd.boot > initrd.boot.cksum
+mv -f ./initrd.boot /mnt/${BOOT_DRIVES}2/boot/
+[ $? = 0 ] ||  error_stop "Transfor QNAP RAM disk failed."
+mv -f ./initrd.boot.cksum /mnt/${BOOT_DRIVES}2/boot/
+[ ! -e $WORKING_DIR/initrd/bin/xz ] || repair_rootfs2 "Repair the rootfs2.bz file. Please wait a while."
+
+umount /dev/${BOOT_DRIVES}2 1>/dev/null 2>&1
+umount /dev/${BOOT_DRIVES}3 1>/dev/null 2>&1
+
+echo
+echo "Create QNAP boot disk successful"
+echo "If you need to modify the model file in the mymodel directory, execute sudo cp -f ./mymodel/* ./initrd/etc/ "
+echo "Re-execute sudo ./re_packing to complete boot disk creation"
+echo "Please restart the system if not needed"
+echo

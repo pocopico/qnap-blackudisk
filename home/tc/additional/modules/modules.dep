@@ -1,0 +1,21 @@
+### APPENDING to original ###
+mpt3sas.ko: raid_class.ko scsi_transport_sas.ko
+mptbase.ko:
+mptscsih.ko: mptbase.ko
+mptspi.ko: mptscsih.ko mptbase.ko scsi_transport_spi.ko
+mptfc.ko: mptscsih.ko mptbase.ko scsi_transport_fc.ko
+mptsas.ko: mptscsih.ko mptbase.ko scsi_transport_sas.ko
+mptctl.ko: mptbase.ko
+mptlan.ko: mptbase.ko
+bnx2.ko:
+bnx2x.ko: pps_core.ko mdio.ko libcrc32c.ko
+bnxt_en.ko: devlink.ko
+vmxnet3.ko:
+e1000.ko:
+vmw_balloon.ko: kernel/drivers/misc/vmw_vmci/vmw_vmci.ko
+vmw_vmci/vmw_vmci.ko:
+vmw_pvscsi.ko:
+tg3.ko: ptp.ko pps_core.k
+cnic.ko: uio.ko
+dm9601.ko: usbnet.ko mii.ko
+ax88179_178a.ko: usbnet.ko mii.ko

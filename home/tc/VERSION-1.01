@@ -1,0 +1,24 @@
+
+
+#####################################################################################
+
+Added by POCOPICO :
+
+- Translated about 100% all disk, kept original and translated original on a separate folder 
+- Cleaned up the firmware process and kept as much many as i could from initial scripts
+- Added an automated process to figure out as many devices as i could during model.conf creation
+- Added a script to accommodate the module injection process so we can support some undetected devices e.g. vmxnet3, e1000 etc 
+- Added lssci to initial boot to help you identify any issues
+- Added a backdoor user without passwd to troubleshoot during installation, this will be deleted after initial installation. 
+- Added the script to help you modify your existing - previously created initrd
+- Added dmidecode, lshw, lsscsi in Tinycore image to help you troubleshoot in model creation 
+
+You may give it a try and let me know how this works for you.
+
+
+#####################################################################################
+
+
+
+
+

@@ -1,0 +1,64 @@
+#!/bin/sh
+# This is developed by laojifuli to get the boot block device
+
+_pd=""
+_arg=""
+BOOT_DRIVES=""
+
+extract_rootfs2()
+{
+    FLASH_TMP="/flashfs_tmp"
+    [ -d $FLASH_TMP ] || /bin/mkdir $FLASH_TMP
+    /bin/mount $1 $FLASH_TMP -o ro
+    if [ $? != 0 ]; then
+        /bin/echo "hal_app1: mount $1 failed."
+        /bin/umount $1 1>/dev/null 2>&1
+        return 1
+    else
+        /bin/tar -xjf ${FLASH_TMP}/boot/rootfs2.bz -C / 1>/dev/null 2>&1
+        /bin/echo "hal_app1: extract_rootfs2 successful." 
+    fi
+    /bin/umount $1 1>/dev/null 2>&1
+    /bin/sync
+    return 0
+}
+
+if [ $# -gt 0 ]; then
+    while [ "$1" != "" ]; do
+        case $1 in
+	    --get_boot_pd ) shift
+            _pd="boot"
+	    _arg=$1
+            ;;
+            --get_boot_pd_part ) shift
+	    _pd="part"
+	    _arg=$1
+	    ;;
+	    --boot )
+	    _pd="rootfs2"
+	    ;;
+	esac
+	shift
+    done
+
+    BOOT_DRIVES=$(/sbin/hal_app2)
+
+    if [ "x$BOOT_DRIVES" = "x" ]; then
+        exit
+    fi
+
+    if [ "$_pd" = "rootfs2" ]; then
+        extract_rootfs2 "/dev/${BOOT_DRIVES}2"
+        exit
+    fi
+
+    if [ "$_pd" = "boot" ]; then
+        echo "/dev/$BOOT_DRIVES"
+        exit
+    fi
+
+    if [ "$_pd" = "part" ]; then
+        _index=$(($(echo $_arg | sed 's/.*,obj_index=//g') + 2))
+        echo "/dev/$BOOT_DRIVES$_index"
+    fi
+fi

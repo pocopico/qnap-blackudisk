@@ -1,0 +1,92 @@
+#!/bin/sh
+#
+# This scripts will perform the packing of your initrd and the checksum and copy
+# it over to your boot drive
+#
+#
+
+ 
+BOOT_DRIVES=$(./hal_app2)
+WORKING_DIR=/home/tc/
+BOOT_DIR=/mnt/${BOOT_DRIVES}2/boot
+
+ 
+
+mount_boot()
+{
+	echo $1
+	[ -d /mnt/${BOOT_DRIVES}2 ] || mkdir /mnt/${BOOT_DRIVES}2
+	[ -d /mnt/${BOOT_DRIVES}2/boot ] || mount /dev/${BOOT_DRIVES}2 /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+	[ $? = 0 ] || error_stop "Try to mount /dev/${BOOT_DRIVES}2 failed."
+}
+
+
+umount_boot()
+{
+	umount /mnt/${BOOT_DRIVES}2 1>/dev/null 2>&1
+}
+
+
+packing_initrd()
+{
+	echo $1
+
+	####Automatically copy files to initrd directory using preset command line ####copy something to initrd directory
+	#cp -f model_Q0120_Q0160_10_10.conf ${WORKING_DIR}/initrd/etc/
+	#cp -f r8168.ko ${WORKING_DIR}/initrd/lib/modules/misc/
+	
+	cd ${WORKING_DIR}
+	[ ! -e initrd.boot ] || rm -f ./initrd.boot
+	cd ./initrd
+	find . | cpio -o -H newc | gzip > ../initrd.boot
+}
+
+cp_initrd()
+{
+	echo $1
+	cd ${WORKING_DIR}
+	[ -e initrd.boot ] && cksum initrd.boot > initrd.boot.cksum
+	[ $? = 0 ] || error_stop "initrd.boot file No found."
+	mv -f ./initrd.boot /mnt/${BOOT_DRIVES}2/boot/
+	[ $? = 0 ] || error_stop "Transport QNAP RAM disk failed."
+	mv -f ./initrd.boot.cksum /mnt/${BOOT_DRIVES}2/boot/
+}
+
+error_stop()
+{
+	echo $1
+	umount /dev/${BOOT_DRIVES}2 1>/dev/null 2>&1
+	umount /dev/${BOOT_DRIVES}3 1>/dev/null 2>&1
+	exit 1
+}
+
+
+echo -n "Trying to mount your boot drive"
+mount_boot
+
+echo -n "Trying to repack your initrd image"
+packing_initrd 
+
+	if [ ! $? -eq 0 ] ; then
+	echo "Error repacking your initrd image"
+	else
+	echo "DONE !"
+	fi
+
+echo -n "Trying to copy your initrd.boot and initrd.cksum over to your boot drive"
+cp_initrd
+
+if [ ! $? -eq 0 ] ; then
+	echo "Error copying your initrd image to your drive "
+	else
+	echo "DONE !"
+	fi
+
+
+echo "Unmounting boot"
+umount_boot
+
+
+echo "Done, if you dont need to perform any other changes you may reboot"
+
+

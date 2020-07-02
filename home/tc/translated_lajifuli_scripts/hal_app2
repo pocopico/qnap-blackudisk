@@ -1,0 +1,33 @@
+#!/bin/sh
+# This is developed by laojifuli to get the boot block device
+
+tail -n+3 /proc/partitions | while read major minor size name
+do
+	if echo $name | grep -q "^sd[[:alpha:]]*$";then
+		basename=$name
+		dev_size=$size
+		counter=0
+		continue
+	fi
+	if [ $name = "${basename}1" -a "$size" = "65536" ]; then
+		counter=$((counter+1))
+	elif [ $name = "${basename}2" ]; then
+		counter=$((counter+1))
+	elif [ $name = "${basename}3" ]; then
+		counter=$((counter+1))
+	elif [ $name = "${basename}4" -a "$size" = "1" ]; then
+		counter=$((counter+1))
+	elif [ $name = "${basename}5" -a "$size" = "16384" ]; then
+		counter=$((counter+1))
+	elif [ $name = "${basename}6" -a "$size" = "16384" ]; then
+		counter=$((counter+1))
+	elif [ $name = "${basename}7" -a "$size" = "16384" ]; then
+		counter=$((counter+1))
+	elif [ $name = "${basename}8" -a "$counter" = "7" ]; then
+		counter=$((counter+1))
+		echo $basename
+		break
+	else
+		counter=0
+	fi
+done

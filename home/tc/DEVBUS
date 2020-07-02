@@ -1,0 +1,25 @@
+#!/bin/sh
+# This is developed by laojifuli to do hardware check
+
+#System disk controller type
+#Default is SATA, if your disk on SCSI or IDE plaese change it
+CONTROLLER="SATA"
+
+DEV_BUS=$(lspci | grep "${CONTROLLER}")
+if [ "x${DEV_BUS}" = "x" ]; then
+    echo "Could not find hardware disk controller."
+    echo "You may encounter the QNAP Hard Drive Missing Error."
+    exit 1
+fi
+
+DEV_BUS=$(echo ${DEV_BUS} | cut -d' ' -f1)
+MYBUS=$(echo ${DEV_BUS} | cut -d':' -f1)
+DEV_BUS=$(echo ${DEV_BUS} | cut -d':' -f2)
+MYDEV=$(echo ${DEV_BUS} | cut -d'.' -f1)
+MYFUNC=$(echo ${DEV_BUS} | cut -d'.' -f2)
+DEV_BUS=$(printf "DEV_BUS=B%02d:D%02d:F%0d" "0x$MYBUS" "0x$MYDEV" "0x$MYFUNC")
+
+echo "Your $CONTROLLER value is"
+echo "=================="
+echo $DEV_BUS
+echo "=================="

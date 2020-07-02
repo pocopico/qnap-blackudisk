@@ -1,0 +1,42 @@
+#!/bin/sh
+# This is developed by laojifuli to do hardware check
+
+#System disk controller type
+#Default is SATA, if your disk on SCSI or IDE plaese change it
+CONTROLLER="SATA"
+
+DEV_BUS=$(lspci | grep "${CONTROLLER}")
+if [ "x${DEV_BUS}" = "x" ]; then
+    echo "Could not find hardware disk controller."
+    echo "You may encounter the QNAP Hard Drive Missing Error."
+    exit 1
+fi
+
+DEV_BUS=$(echo ${DEV_BUS} | cut -d' ' -f1)
+MYBUS=$(echo ${DEV_BUS} | cut -d':' -f1)
+DEV_BUS=$(echo ${DEV_BUS} | cut -d':' -f2)
+MYDEV=$(echo ${DEV_BUS} | cut -d'.' -f1)
+MYFUNC=$(echo ${DEV_BUS} | cut -d'.' -f2)
+DEV_BUS=$(printf "DEV_BUS=B%02d:D%02d:F%0d" "0x$MYBUS" "0x$MYDEV" "0x$MYFUNC")
+echo "=================="
+echo $DEV_BUS
+echo "=================="
+
+if [ ! -d ./initrd ]; then
+    echo "Could not found the QNAP RAM disk"
+    exit 1
+fi
+echo "Patch model system disk controller config."
+TOGGLE=""
+while IFS='' read -r line || [ -n "$line" ]; do
+    if [ "$TOGGLE" = "true" ] && (echo "$line" | grep "DEV_BUS" 1>/dev/null 2>&1); then
+	TOGGLE=""
+	echo $DEV_BUS >> ./model.conf
+	continue
+    fi
+    if (echo "$line" | grep "System Disk " 1>/dev/null 2>&1); then
+	TOGGLE="true"
+    fi
+    echo $line >> ./model.conf
+done < "./initrd/etc/model.conf"
+mv -f ./model.conf ./initrd/etc/model.conf
