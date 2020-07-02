@@ -27,16 +27,17 @@ umount_boot()
 refreshscripts()
 {
 
-echo "Loading required tce packages"
 
-su - tc -c "tce-load -wi git"
 
- if [ ! -r /tmp/tcloop/git/usr/local/bin/git ] ; then
+ if [  -r /tmp/tcloop/git/usr/local/bin/git ] ; then
 
- echo "Done !!!" 
+ echo "Git exists no need to load additional packages !!!"
+
    else 
-  echo "Couldnt download additional packages"
- exit 99
+   echo "Loading required tce packages"
+   su - tc -c "tce-load -wi git"
+  
+ 
  fi
  
  echo "Cloning ...."
