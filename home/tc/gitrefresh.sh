@@ -69,7 +69,13 @@ response=${response:-Y}
 
 if [ $response = "Y" ] ; then 
 
+
+echo "Mounting tinycore boot disk"
+mount_boot
+
 refreshscripts
+
+umount_boot
 
 else 
 
